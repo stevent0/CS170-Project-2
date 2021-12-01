@@ -11,19 +11,22 @@ using namespace std;
 
 vector<vector<float>> parseData(const string& filename);
 void featureSearch(const vector<vector<float>>& data );
+void backwardSelection(const vector<vector<float>>& data );
 float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<int>& currentSet, int featureToAdd);
 
 
 int main() {
-    vector<vector<float>> data = parseData("Ver_2_CS170_Fall_2021_LARGE_data__27.txt");
+    //Ver_2_CS170_Fall_2021_Small_data__86.txt
+    //Ver_2_CS170_Fall_2021_Small_data__61.txt
 
-    featureSearch(data);
+    vector<vector<float>> data = parseData("Ver_2_CS170_Fall_2021_Small_data__61.txt");
+
+    backwardSelection(data);
 }
 
 void featureSearch(const vector<vector<float>>& data) {
 
     set<int> currentSetOfFeatures;
-    vector<int> answer;
     float bestAccuracy = 0;
     set<int> bestSet;
 
@@ -51,6 +54,65 @@ void featureSearch(const vector<vector<float>>& data) {
         }
 
         currentSetOfFeatures.insert(featureToAddAtThisLevel);
+        if (bestAccuracySoFar > bestAccuracy) {
+            bestAccuracy = bestAccuracySoFar;
+            bestSet = currentSetOfFeatures;
+             cout << "BEST SET SO FAR: ";
+            for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
+                cout << *it << " ";
+            }
+            cout << endl;
+        }
+    
+        // cout << "On level " << i << " added feature " << featureToAddAtThisLevel << " to current set" << endl;
+
+    }
+
+    for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
+        cout << *it << " ";
+    }
+    cout << "accuracy: " << bestAccuracy << endl;
+    cout << endl;
+}
+
+void backwardSelection(const vector<vector<float>>& data) {
+    set<int> currentSetOfFeatures;
+    vector<int> answer;
+    float bestAccuracy = 0;
+    set<int> bestSet;
+
+    for (int i = 1; i <= data.at(0).size()-1; ++i) {
+        currentSetOfFeatures.insert(i);
+    }
+
+
+    for (int i = 1; i < data.at(0).size(); ++i) {
+
+        cout << "On the " << i << "th level of the search tree" << endl; 
+
+        int featureToRemoveAtThisLevel = -1;
+        float bestAccuracySoFar = 0;
+
+        for (int k = 1; k < data.at(0).size(); ++k) {
+
+            if (currentSetOfFeatures.count(k) == 0) continue;
+            cout << "--Considering removing the " << k << " feature" << endl;
+
+            set<int> temp = currentSetOfFeatures;
+            temp.erase(k);
+
+            float accuracy = leaveOneOutCrossValidation(data, temp, -1);  //featureToAdd=-1 since no features to add
+            cout << accuracy << endl;
+
+            if (accuracy > bestAccuracySoFar) {
+                bestAccuracySoFar = accuracy;
+                featureToRemoveAtThisLevel = k;
+    
+            }
+
+        }
+
+        currentSetOfFeatures.erase(featureToRemoveAtThisLevel);
         if (bestAccuracySoFar > bestAccuracy) {
             bestAccuracy = bestAccuracySoFar;
             bestSet = currentSetOfFeatures;

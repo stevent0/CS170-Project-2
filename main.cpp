@@ -11,11 +11,11 @@ using namespace std;
 
 vector<vector<float>> parseData(const string& filename);
 void featureSearch(const vector<vector<float>>& data );
-float leaveOneOutCrossValidation(const vector<vector<float>>& data, set<int> currentSet, int featureToAdd);
+float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<int>& currentSet, int featureToAdd);
 
 
 int main() {
-    vector<vector<float>> data = parseData("CS170_Fall_2021_SMALL_data__86.txt");
+    vector<vector<float>> data = parseData("Ver_2_CS170_Fall_2021_LARGE_data__27.txt");
 
     featureSearch(data);
 }
@@ -45,7 +45,7 @@ void featureSearch(const vector<vector<float>>& data) {
             if (accuracy > bestAccuracySoFar) {
                 bestAccuracySoFar = accuracy;
                 featureToAddAtThisLevel = k;
-
+    
             }
 
         }
@@ -72,11 +72,11 @@ void featureSearch(const vector<vector<float>>& data) {
     cout << endl;
 }
 
-float leaveOneOutCrossValidation(const vector<vector<float>>& data, set<int> currentSet, int featureToAdd) {
+float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<int>& currentSet, int featureToAdd) {
 
     int numberCorrectlyClassified = 0;
 
-    for (int i = 0; i < data.size(); ++i) {
+    for (int i = 0; i < data.size(); ++i) { //Loop through each row of data from dataset:  data[i]
 
         int objectToClassify = static_cast<int>(data.at(i).at(0));
         float nearestNeighborDistance = numeric_limits<float>::max();
@@ -85,27 +85,30 @@ float leaveOneOutCrossValidation(const vector<vector<float>>& data, set<int> cur
 
         // cout << "Looping over i, at the " << i << " location" << endl;
         // cout << "The " << i << "th object is in class " << classNumber << endl;
-        for (int k = 0; k < data.size(); ++k) {
 
-            if (k != i) {
+        for (int k = 0; k < data.size(); ++k) {   //Loop through each row of data from dataset:  data[k]
+
+            if (k != i) { //Find a different row of data[i] that's not data[k]
+
                 // cout << "Ask if " << i << " is the nearest neighbor with " << k << endl;
 
                 float triangle_sides = 0; //triangle_sides represents //a^2 + b^2 + c^2 + d^2 + ...
                 float distance;
                 
-                for (int j = 1; j < data.at(0).size(); ++j) {
 
+                //Calculate the distance between data[i] and data[k]
+                for (int j = 1; j < data.at(0).size(); ++j) {  
+
+                    //only consdering features in current set + featuretoadd
                     if (currentSet.count(j) > 0 || j == featureToAdd) {
                         vector<float> row_i = data.at(i); 
                         vector<float> row_k = data.at(k);
                         triangle_sides += pow(row_i.at(j) - row_k.at(j), 2); 
                     }
-
-
                 }
-
                 distance = sqrt(triangle_sides);  // sqrt(a^2 + b^2 + c^2 + d^2 + ...)
 
+                //If data[k] is closest to data[i] then save it
                 if (distance < nearestNeighborDistance) {
                     nearestNeighborDistance = distance;
                     nearestNeighborLocation = k;
@@ -114,6 +117,7 @@ float leaveOneOutCrossValidation(const vector<vector<float>>& data, set<int> cur
             }
         }
 
+        //object classification already given in file. Check if it the closest data[k] has the same classification.
         if (objectToClassify == nearestNeighborLabel) numberCorrectlyClassified += 1;
     }
 
@@ -149,6 +153,3 @@ vector<vector<float>> parseData(const string& filename) {
 
 }
 
-/*
-
-*/

@@ -13,22 +13,52 @@ vector<vector<float>> parseData(const string& filename);
 void featureSearch(const vector<vector<float>>& data );
 void backwardSelection(const vector<vector<float>>& data );
 float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<int>& currentSet, int featureToAdd);
+float getDefaultRate(int classNumber, const vector<vector<float>>& data);
 
 
-int main() {
+int main(int argc, char** argv) {
     //Ver_2_CS170_Fall_2021_Small_data__86.txt
+    //Ver_2_CS170_Fall_2021_LARGE_data__27.txt
+
     //Ver_2_CS170_Fall_2021_Small_data__61.txt
+    //Ver_2_CS170_Fall_2021_LARGE_data__22.txt
 
-    vector<vector<float>> data = parseData("Ver_2_CS170_Fall_2021_Small_data__61.txt");
+    //Ver_2_CS170_Fall_2021_Small_data__18.txt
+    //Ver_2_CS170_Fall_2021_LARGE_data__25.txt
+    
 
+    string filename = argv[1];
+
+    vector<vector<float>> data = parseData(filename);
+    //featureSearch(data);
     backwardSelection(data);
+}
+
+float getDefaultRate(int classNumber, const vector<vector<float>>& data) {
+
+    int actual = 0;
+    int total = data.size();
+
+    for (const vector<float>& row : data) {
+        actual = classNumber == static_cast<int>(row.at(0)) ? actual+1 : actual;
+    }
+    cout << actual << "/" << total << endl;
+
+    return actual / static_cast<float>(total);
 }
 
 void featureSearch(const vector<vector<float>>& data) {
 
     set<int> currentSetOfFeatures;
-    float bestAccuracy = 0;
     set<int> bestSet;
+    float defaultRate = max(getDefaultRate(1, data), getDefaultRate(2, data));
+    float bestAccuracy = defaultRate;
+    vector< set<int> > curSet; curSet.push_back(currentSetOfFeatures);
+    vector<float> acc;   acc.push_back(defaultRate);
+
+    
+   
+
 
     for (int i = 1; i < data.at(0).size(); ++i) {
 
@@ -37,13 +67,13 @@ void featureSearch(const vector<vector<float>>& data) {
         int featureToAddAtThisLevel = -1;
         float bestAccuracySoFar = 0;
 
+
         for (int k = 1; k < data.at(0).size(); ++k) {
 
             if (currentSetOfFeatures.count(k) > 0) continue;
             cout << "--Considering adding the " << k << " feature" << endl;
 
             float accuracy = leaveOneOutCrossValidation(data, currentSetOfFeatures, k);
-            cout << accuracy << endl;
 
             if (accuracy > bestAccuracySoFar) {
                 bestAccuracySoFar = accuracy;
@@ -54,10 +84,13 @@ void featureSearch(const vector<vector<float>>& data) {
         }
 
         currentSetOfFeatures.insert(featureToAddAtThisLevel);
+        curSet.push_back(currentSetOfFeatures);
+        acc.push_back(bestAccuracySoFar);
+
         if (bestAccuracySoFar > bestAccuracy) {
             bestAccuracy = bestAccuracySoFar;
             bestSet = currentSetOfFeatures;
-             cout << "BEST SET SO FAR: ";
+            cout << "BEST SET SO FAR: ";
             for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
                 cout << *it << " ";
             }
@@ -68,22 +101,46 @@ void featureSearch(const vector<vector<float>>& data) {
 
     }
 
+
+    cout << "=====================================" << endl;
+    cout << "BEST SET: ";
     for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
         cout << *it << " ";
     }
+    cout << endl;
     cout << "accuracy: " << bestAccuracy << endl;
     cout << endl;
+
+    cout << "=====================================" << endl;
+
+    for (int i = 0; i < curSet.size(); ++i) {
+        const set<int>& s = curSet.at(i);
+
+        for (const auto& item : s) {
+            cout << item << " ";
+        }
+        cout << "=====> " << acc.at(i) << endl;
+    }
+
+
 }
 
 void backwardSelection(const vector<vector<float>>& data) {
     set<int> currentSetOfFeatures;
     vector<int> answer;
-    float bestAccuracy = 0;
     set<int> bestSet;
 
     for (int i = 1; i <= data.at(0).size()-1; ++i) {
         currentSetOfFeatures.insert(i);
     }
+
+    float defaultRate = leaveOneOutCrossValidation(data, currentSetOfFeatures, -1);
+    float bestAccuracy = defaultRate;
+
+    vector< set<int> > curSet; curSet.push_back(currentSetOfFeatures);
+    vector<float> acc;   acc.push_back(defaultRate);
+    
+
 
 
     for (int i = 1; i < data.at(0).size(); ++i) {
@@ -92,6 +149,7 @@ void backwardSelection(const vector<vector<float>>& data) {
 
         int featureToRemoveAtThisLevel = -1;
         float bestAccuracySoFar = 0;
+        float accuracy;
 
         for (int k = 1; k < data.at(0).size(); ++k) {
 
@@ -100,10 +158,9 @@ void backwardSelection(const vector<vector<float>>& data) {
 
             set<int> temp = currentSetOfFeatures;
             temp.erase(k);
+            
 
-            float accuracy = leaveOneOutCrossValidation(data, temp, -1);  //featureToAdd=-1 since no features to add
-            cout << accuracy << endl;
-
+            accuracy = leaveOneOutCrossValidation(data, temp, -1);  //featureToAdd=-1 since no features to add
             if (accuracy > bestAccuracySoFar) {
                 bestAccuracySoFar = accuracy;
                 featureToRemoveAtThisLevel = k;
@@ -112,29 +169,54 @@ void backwardSelection(const vector<vector<float>>& data) {
 
         }
 
-        currentSetOfFeatures.erase(featureToRemoveAtThisLevel);
-        if (bestAccuracySoFar > bestAccuracy) {
-            bestAccuracy = bestAccuracySoFar;
-            bestSet = currentSetOfFeatures;
-             cout << "BEST SET SO FAR: ";
-            for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
-                cout << *it << " ";
+        // If condition terminates feature search when best accuracy is found for subset of size 1
+        if (currentSetOfFeatures.size() > 1) {
+            currentSetOfFeatures.erase(featureToRemoveAtThisLevel);
+            curSet.push_back(currentSetOfFeatures);
+            acc.push_back(bestAccuracySoFar);
+
+
+            if (bestAccuracySoFar > bestAccuracy) {
+                bestAccuracy = bestAccuracySoFar;
+                bestSet = currentSetOfFeatures;
+                cout << "BEST SET SO FAR: ";
+                for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
+                    cout << *it << " ";
+                }
+                cout << " (with accuracy " << bestAccuracySoFar << ")";
+                cout << endl;
             }
-            cout << endl;
         }
+
+
     
         // cout << "On level " << i << " added feature " << featureToAddAtThisLevel << " to current set" << endl;
 
     }
 
+    cout << "=====================================" << endl;
+    cout << "BEST SET: ";
     for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
         cout << *it << " ";
     }
+    cout << endl;
     cout << "accuracy: " << bestAccuracy << endl;
     cout << endl;
+
+    cout << "=====================================" << endl;
+
+    for (int i = 0; i < curSet.size(); ++i) {
+        const set<int>& s = curSet.at(i);
+
+        for (const auto& item : s) {
+            cout << item << " ";
+        }
+        cout << "=====> " << acc.at(i) << endl;
+    }
 }
 
 float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<int>& currentSet, int featureToAdd) {
+
 
     int numberCorrectlyClassified = 0;
 
@@ -156,15 +238,14 @@ float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<in
 
                 float triangle_sides = 0; //triangle_sides represents //a^2 + b^2 + c^2 + d^2 + ...
                 float distance;
-                
 
-                //Calculate the distance between data[i] and data[k]
+                //Calculate the distance between features in data[i][j] and data[k][j]
                 for (int j = 1; j < data.at(0).size(); ++j) {  
 
                     //only consdering features in current set + featuretoadd
                     if (currentSet.count(j) > 0 || j == featureToAdd) {
-                        vector<float> row_i = data.at(i); 
-                        vector<float> row_k = data.at(k);
+                        const vector<float>& row_i = data.at(i); 
+                        const vector<float>& row_k = data.at(k);
                         triangle_sides += pow(row_i.at(j) - row_k.at(j), 2); 
                     }
                 }
@@ -182,8 +263,8 @@ float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<in
         //object classification already given in file. Check if it the closest data[k] has the same classification.
         if (objectToClassify == nearestNeighborLabel) numberCorrectlyClassified += 1;
     }
-
-    cout << numberCorrectlyClassified << ", " << static_cast<float>(data.size()) << endl;
+    
+    
     return numberCorrectlyClassified / static_cast<float>(data.size());
 }
 

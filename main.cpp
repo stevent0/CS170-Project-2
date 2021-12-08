@@ -11,7 +11,7 @@ using namespace std;
 
 vector<vector<float>> parseData(const string& filename);
 void featureSearch(const vector<vector<float>>& data );
-void backwardSelection(const vector<vector<float>>& data );
+void backwardElimination(const vector<vector<float>>& data );
 float leaveOneOutCrossValidation(const vector<vector<float>>& data, const set<int>& currentSet, int featureToAdd);
 float getDefaultRate(int classNumber, const vector<vector<float>>& data);
 
@@ -27,11 +27,45 @@ int main(int argc, char** argv) {
     //Ver_2_CS170_Fall_2021_LARGE_data__25.txt
     
 
-    string filename = argv[1];
+    // string filename = argv[1];
 
-    vector<vector<float>> data = parseData(filename);
+    // vector<vector<float>> data = parseData(filename);
     //featureSearch(data);
-    backwardSelection(data);
+    // backwardSelection(data);
+
+    string filename;
+    int algorithm;
+    vector<vector<float>> data;
+
+    cout << "=======================================" << endl;
+    cout << "========|| Feature Selection ||========" << endl;
+    cout << "=======================================" << endl;
+    cout << endl;
+
+    cout << "Type in the name of the file to test: ";
+    cin >> filename;
+    cout << endl;
+
+    data = parseData(filename);
+
+    cout << "Type the number of the algorithm you want to run:" << endl << endl;
+    cout << "1) Forward Selection" << endl;
+    cout << "2) Backward Elimination" << endl << endl;
+    cout << "Your selection: ";
+    cin >> algorithm;
+
+    cout << endl;
+    if (algorithm == 1) {
+        cout << "Beginning Search." << endl << endl;
+        featureSearch(data);
+    }
+    else if (algorithm == 2) {
+        cout << "Beginning Search." << endl << endl;
+        backwardElimination(data);
+    }
+
+
+
 }
 
 float getDefaultRate(int classNumber, const vector<vector<float>>& data) {
@@ -42,7 +76,6 @@ float getDefaultRate(int classNumber, const vector<vector<float>>& data) {
     for (const vector<float>& row : data) {
         actual = classNumber == static_cast<int>(row.at(0)) ? actual+1 : actual;
     }
-    cout << actual << "/" << total << endl;
 
     return actual / static_cast<float>(total);
 }
@@ -56,9 +89,6 @@ void featureSearch(const vector<vector<float>>& data) {
     vector< set<int> > curSet; curSet.push_back(currentSetOfFeatures);
     vector<float> acc;   acc.push_back(defaultRate);
 
-    
-   
-
 
     for (int i = 1; i < data.at(0).size(); ++i) {
 
@@ -66,12 +96,12 @@ void featureSearch(const vector<vector<float>>& data) {
 
         int featureToAddAtThisLevel = -1;
         float bestAccuracySoFar = 0;
-
+        
 
         for (int k = 1; k < data.at(0).size(); ++k) {
 
             if (currentSetOfFeatures.count(k) > 0) continue;
-            cout << "--Considering adding the " << k << " feature" << endl;
+            // cout << "--Considering adding the " << k << " feature" << endl;
 
             float accuracy = leaveOneOutCrossValidation(data, currentSetOfFeatures, k);
 
@@ -81,7 +111,23 @@ void featureSearch(const vector<vector<float>>& data) {
     
             }
 
+            set<int> temp = currentSetOfFeatures;
+            temp.insert(k);
+            cout << "\tUsing feature(s) {";
+
+            for (auto it = temp.begin(); it != temp.end(); it++) {
+                auto it_copy = it;
+                cout << *it;
+                if ( ++it_copy != temp.end()) {
+                    cout << ", ";
+                }
+            }
+
+            cout << "} accuracy is " << accuracy * 100 << "%" << endl;
+
         }
+
+        cout << endl;
 
         currentSetOfFeatures.insert(featureToAddAtThisLevel);
         curSet.push_back(currentSetOfFeatures);
@@ -90,42 +136,72 @@ void featureSearch(const vector<vector<float>>& data) {
         if (bestAccuracySoFar > bestAccuracy) {
             bestAccuracy = bestAccuracySoFar;
             bestSet = currentSetOfFeatures;
-            cout << "BEST SET SO FAR: ";
-            for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
-                cout << *it << " ";
+
+            cout <<  "Feature set {";
+            for (auto it = currentSetOfFeatures.begin(); it != currentSetOfFeatures.end(); it++) {
+                auto it_copy = it;
+                cout << *it;
+                if ( ++it_copy != currentSetOfFeatures.end()) {
+                    cout << ", ";
+                }
             }
-            cout << endl;
+            cout << "} was best, accuracy is " << bestAccuracySoFar * 100 << "%" << endl << endl;
         }
-    
-        // cout << "On level " << i << " added feature " << featureToAddAtThisLevel << " to current set" << endl;
+        else {
+            cout << "Warning: Accuracy has decreased! Continuing search in case of local maxima." << endl;
+
+            cout <<  "Feature set {";
+            for (auto it = currentSetOfFeatures.begin(); it != currentSetOfFeatures.end(); it++) {
+                auto it_copy = it;
+                cout << *it;
+                if ( ++it_copy != currentSetOfFeatures.end()) {
+                    cout << ", ";
+                }
+            }
+            cout << "} was best, accuracy is " << bestAccuracySoFar * 100 << "%" << endl << endl;
+        }
 
     }
 
+    cout << "===========================================================================================================" << endl;
+    cout << "Finished search!! The best feature subset is {";
 
-    cout << "=====================================" << endl;
-    cout << "BEST SET: ";
     for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
-        cout << *it << " ";
-    }
-    cout << endl;
-    cout << "accuracy: " << bestAccuracy << endl;
-    cout << endl;
-
-    cout << "=====================================" << endl;
-
-    for (int i = 0; i < curSet.size(); ++i) {
-        const set<int>& s = curSet.at(i);
-
-        for (const auto& item : s) {
-            cout << item << " ";
+        auto it_copy = it;
+        cout << *it;
+        if ( ++it_copy != bestSet.end() ) {
+            cout << ", ";
         }
-        cout << "=====> " << acc.at(i) << endl;
     }
+    cout << "} with an accuracy of " << bestAccuracy * 100 << "%" << endl;
+    cout << "===========================================================================================================" << endl;
+    cout << endl;
+
+
+    // cout << "=====================================" << endl;
+    // cout << "BEST SET: ";
+    // for (auto it = bestSet.begin(); it != bestSet.end(); it++) {
+    //     cout << *it << " ";
+    // }
+    // cout << endl;
+    // cout << "accuracy: " << bestAccuracy << endl;
+    // cout << endl;
+
+    // cout << "=====================================" << endl;
+
+    // for (int i = 0; i < curSet.size(); ++i) {
+    //     const set<int>& s = curSet.at(i);
+
+    //     for (const auto& item : s) {
+    //         cout << item << " ";
+    //     }
+    //     cout << "=====> " << acc.at(i) << endl;
+    // }
 
 
 }
 
-void backwardSelection(const vector<vector<float>>& data) {
+void backwardElimination(const vector<vector<float>>& data) {
     set<int> currentSetOfFeatures;
     vector<int> answer;
     set<int> bestSet;
@@ -275,7 +351,8 @@ vector<vector<float>> parseData(const string& filename) {
     string line;
 
     if (!ifs.is_open()) {
-        cout << "Couldn't open " << filename << ". Make this file is in the data directory."<< endl;
+        cout << "Couldn't open " << filename << endl;
+        exit(0);
     }
 
 
